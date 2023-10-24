@@ -1,0 +1,29 @@
+{
+  "name": "fiap-tech-challenge-auth",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "format": "prettier --write '*/**/*.ts'",
+    "lint": "eslint '*/**/*.ts'",
+    "prebuild": "rimraf dist",
+    "build": "tsc -p tsconfig-build.json"
+  },
+  "keywords": [],
+  "author": "Antero, Felipe <souzantero@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@types/node": "^18.18.2",
+    "@typescript-eslint/eslint-plugin": "^5.60.1",
+    "@typescript-eslint/parser": "^5.60.1",
+    "eslint": "^8.43.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "2.8.8",
+    "rimraf": "^5.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  }
+}
