@@ -5,6 +5,11 @@ provider:
   name: aws
   region: us-west-2
   runtime: nodejs18.x
+  environment:
+    AWS_COGNITO_CLIENT_ID: ${env:AWS_COGNITO_CLIENT_ID}
+    AWS_COGNITO_CLIENT_SECRET: ${env:AWS_COGNITO_CLIENT_SECRET}
+  tags:
+    project: fiap
 
 functions:
   authorize:

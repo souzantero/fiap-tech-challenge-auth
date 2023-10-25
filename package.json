@@ -9,7 +9,9 @@
     "prebuild": "rimraf dist",
     "build": "tsc -p tsconfig-build.json",
     "prestart": "npm run build",
-    "start": "sls offline start --stage local"
+    "start": "sls offline start --stage local",
+    "predeploy": "npm run build",
+    "deploy": "sls deploy --stage dev --verbose"
   },
   "keywords": [],
   "author": "Antero, Felipe <souzantero@gmail.com>",
