@@ -31,11 +31,11 @@ const respond = (
 export const authorize = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
-  if (!event.headers?.Authorization) {
+  if (!event.headers?.authorization) {
     return respond(401, 'Missing Authorization header');
   }
 
-  const accessToken = event.headers.Authorization.replace('Bearer ', '');
+  const accessToken = event.headers.authorization.replace('Bearer ', '');
   const params = {
     AccessToken: accessToken,
   };

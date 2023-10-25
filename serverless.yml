@@ -1,0 +1,36 @@
+service: fiap-tech-challenge-auth
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  region: us-west-2
+  runtime: nodejs18.x
+
+functions:
+  authorize:
+    handler: dist/index.authorize
+    events:
+      - httpApi:
+          path: /authorize
+          method: post
+  authenticate:
+    handler: dist/index.authenticate
+    events:
+      - httpApi:
+          path: /authenticate
+          method: post
+  register:
+    handler: dist/index.register
+    events:
+      - httpApi:
+          path: /register
+          method: post
+  confirm:
+    handler: dist/index.confirm
+    events:
+      - httpApi:
+          path: /confirm
+          method: post
+
+plugins:
+  - serverless-offline

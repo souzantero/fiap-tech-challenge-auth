@@ -7,7 +7,9 @@
     "format": "prettier --write '*/**/*.ts'",
     "lint": "eslint '*/**/*.ts'",
     "prebuild": "rimraf dist",
-    "build": "tsc -p tsconfig-build.json"
+    "build": "tsc -p tsconfig-build.json",
+    "prestart": "npm run build",
+    "start": "sls offline start --stage local"
   },
   "keywords": [],
   "author": "Antero, Felipe <souzantero@gmail.com>",
@@ -26,6 +28,7 @@
     "eslint-plugin-prettier": "^4.2.1",
     "prettier": "2.8.8",
     "rimraf": "^5.0.1",
+    "serverless-offline": "^13.2.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.1.6"
   }
