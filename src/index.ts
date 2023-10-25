@@ -1,204 +1,146 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
-import * as AWS from 'aws-sdk'
-import * as crypto from 'crypto'
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import * as AWS from 'aws-sdk';
+import * as crypto from 'crypto';
 
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION ?? 'us-east-1'
-})
+  region: process.env.AWS_REGION ?? 'us-east-1',
+});
 
-const cognitoClientId = process.env.AWS_COGNITO_CLIENT_ID ?? ''
-const cognitoClientSecret = process.env.AWS_COGNITO_CLIENT_SECRET ?? ''
-const cognito = new AWS.CognitoIdentityServiceProvider()
+const cognitoClientId = process.env.AWS_COGNITO_CLIENT_ID || '';
+const cognitoClientSecret = process.env.AWS_COGNITO_CLIENT_SECRET || '';
+const cognito = new AWS.CognitoIdentityServiceProvider();
 
 const calculateSecretHash = (username: string) =>
   crypto
     .createHmac('sha256', cognitoClientSecret)
     .update(username + cognitoClientId)
-    .digest('base64')
+    .digest('base64');
 
-export const authorize = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+const respond = (
+  statusCode: number,
+  message: string,
+): APIGatewayProxyResult => {
+  return {
+    statusCode,
+    body: JSON.stringify({ message }),
+  };
+};
+
+export const authorize = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
   if (!event.headers?.Authorization) {
-    return {
-      statusCode: 401,
-      body: JSON.stringify({
-        message: 'Missing Authorization header',
-      }),
-    };
+    return respond(401, 'Missing Authorization header');
   }
 
-  const accessToken = event.headers.Authorization.replace('Bearer ', '')
+  const accessToken = event.headers.Authorization.replace('Bearer ', '');
   const params = {
-    AccessToken: accessToken
-  }
+    AccessToken: accessToken,
+  };
 
   try {
-    await cognito.getUser(params).promise()
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'Authorized',
-      }),
-    };
+    await cognito.getUser(params).promise();
+    return respond(200, 'Authorized');
   } catch (error) {
-    const { message } = error as Error
-    return {
-      statusCode: 401,
-      body: JSON.stringify({ message }),
-    };
+    return respond(401, (error as Error).message || 'Unauthorized');
   }
-}
+};
 
-export const authenticate = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const authenticate = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: 'Missing body',
-      }),
-    };
+    return respond(400, 'Missing body');
   }
 
-  const { username, password } = JSON.parse(event.body)
+  const { username, password } = JSON.parse(event.body);
   if (!username || !password) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: 'Missing username or password',
-      }),
-    };
+    return respond(400, 'Missing username or password');
   }
 
-  const secretHash = calculateSecretHash(username)
+  const secretHash = calculateSecretHash(username);
   const params = {
     AuthFlow: 'USER_PASSWORD_AUTH',
     ClientId: cognitoClientId,
     AuthParameters: {
       USERNAME: username,
       PASSWORD: password,
-      SECRET_HASH: secretHash
-    }
-  }
+      SECRET_HASH: secretHash,
+    },
+  };
 
   try {
-    const response = await cognito.initiateAuth(params).promise()
-    const accessToken = response.AuthenticationResult?.AccessToken
+    const response = await cognito.initiateAuth(params).promise();
+    const accessToken = response.AuthenticationResult?.AccessToken;
 
     if (!accessToken) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          message: 'Invalid username or password',
-        }),
-      };
+      return respond(400, 'Invalid username or password');
     }
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ accessToken }),
-    };
+    return respond(200, accessToken);
   } catch (error) {
-    const { message } = error as Error
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message }),
-    };
+    return respond(400, (error as Error).message || 'Authentication failed');
   }
-}
+};
 
-export const register = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const register = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: 'Missing body',
-      }),
-    };
+    return respond(400, 'Missing body');
   }
 
-  const { email, username, password } = JSON.parse(event.body)
+  const { email, username, password } = JSON.parse(event.body);
   if (!email || !username || !password) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: 'Missing email, username or password',
-      }),
-    };
+    return respond(400, 'Missing email, username, or password');
   }
 
-  const secretHash = calculateSecretHash(username)
+  const secretHash = calculateSecretHash(username);
   const params = {
     ClientId: cognitoClientId,
     Password: password,
     Username: username,
-    UserAttributes: [
-      { Name: 'email', Value: email }
-    ],
-    SecretHash: secretHash
-  }
+    UserAttributes: [{ Name: 'email', Value: email }],
+    SecretHash: secretHash,
+  };
 
   try {
-    await cognito.signUp(params).promise()
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'User created',
-      }),
-    };
+    await cognito.signUp(params).promise();
+    return respond(200, 'User created');
   } catch (error) {
-    const { message } = error as Error
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message }),
-    };
+    return respond(400, (error as Error).message || 'User registration failed');
   }
-}
+};
 
-export const confirm = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const confirm = async (
+  event: APIGatewayProxyEvent,
+): Promise<APIGatewayProxyResult> => {
   if (!event.body) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: 'Missing body',
-      }),
-    };
+    return respond(400, 'Missing body');
   }
 
-  const { username, code } = JSON.parse(event.body)
+  const { username, code } = JSON.parse(event.body);
   if (!username || !code) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({
-        message: 'Missing username or code',
-      }),
-    };
+    return respond(400, 'Missing username or code');
   }
 
-  const secretHash = calculateSecretHash(username)
+  const secretHash = calculateSecretHash(username);
   const params = {
     ClientId: cognitoClientId,
     ConfirmationCode: code,
     Username: username,
-    SecretHash: secretHash
-  }
+    SecretHash: secretHash,
+  };
 
   try {
-    await cognito.confirmSignUp(params).promise()
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        message: 'User confirmed',
-      }),
-    };
+    await cognito.confirmSignUp(params).promise();
+    return respond(200, 'User confirmed');
   } catch (error) {
-    const { message } = error as Error
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ message }),
-    };
+    return respond(400, (error as Error).message || 'Confirmation failed');
   }
-}
+};
 
 // Manual tests
 
@@ -236,8 +178,8 @@ export const confirm = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 // executeRegister(email, username, password)
 // executeAuthenticate(username, password)
 
-// const confirmCode = '864798'
+// const confirmCode = '139694'
 // executeConfirm(username, confirmCode)
 
-// const accessToken = 'eyJraWQiOiI5eHVGNlpmY2pyZGp5WEZzV2xubnM1ZjdtTXVXejVVc0M0R25xdXplam5jPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI5YmI4ZTUwOC0zZjUwLTQzMDUtYjFmNC0wM2JjMTZiMTcwZGIiLCJpc3MiOiJodHRwczpcL1wvY29nbml0by1pZHAudXMtd2VzdC0yLmFtYXpvbmF3cy5jb21cL3VzLXdlc3QtMl9JYjBUbzhkVEoiLCJjbGllbnRfaWQiOiJvbjUzdm92aW1rMzZsZm5oMG9jMXJ0NzgiLCJvcmlnaW5fanRpIjoiNDAzMjNkY2YtYTdiOS00YTVjLTg1YTEtYzEwY2M5YTEwYjI1IiwiZXZlbnRfaWQiOiJiN2E1ZDQ1Ni01ZDgwLTQzNjEtOWM1Ny1hZjdkY2Q5NjNmZDMiLCJ0b2tlbl91c2UiOiJhY2Nlc3MiLCJzY29wZSI6ImF3cy5jb2duaXRvLnNpZ25pbi51c2VyLmFkbWluIiwiYXV0aF90aW1lIjoxNjk4MTkyNzA4LCJleHAiOjE2OTgxOTYzMDgsImlhdCI6MTY5ODE5MjcwOCwianRpIjoiZjUwNzZkNWEtOTBjZS00ZTA2LWJlYTgtNTE2OWQxMjFiZWFlIiwidXNlcm5hbWUiOiIwMDAxMTEyMjIzMyJ9.lT4aXbqqaLE2HNGtwgp39hka8naMPvyDHeFoSqsxWbyQvDDL20Ncctfx1L-FElAl2h2GeMZOGe0wmOIk3rsH__hIAniYXaWXSfJNafsQCJTRy3o9bLARKwRZcQgSpN1Ermmdt_XXOcmaJzX5joms1sePeTJbp7Proc_L8TT8b6l4X4gxFVh3jrwmRXz7bBDYYLkPJBE4PgiWRsHYsE9N3BKhrsDAmNazrvSl_L4lMd0Gu0mMtsAVZvFZ-oBncYqdHiRhgbtNpIlm5LPLu3oGCxLVWeQ2U_gQlqrN73uALu4UJN_7PGpILh4G6LVvULQRXnh75IRN7mcYB6ikNNntNw'
+// const accessToken = 'eyJraWQiOiI5eHVGNlpmY2pyZGp5WEZzV2xubnM1ZjdtTXVXejVVc0M0R25xdXplam5jPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJlMDljNDM5Mi0xMGZjLTQ0MTgtOGZhOC1kMDU4OWQ0MTY4ZGMiLCJpc3MiOiJodHRwczpcL1wvY29nbml0by1pZHAudXMtd2VzdC0yLmFtYXpvbmF3cy5jb21cL3VzLXdlc3QtMl9JYjBUbzhkVEoiLCJjbGllbnRfaWQiOiJvbjUzdm92aW1rMzZsZm5oMG9jMXJ0NzgiLCJvcmlnaW5fanRpIjoiMThmNWY0MjgtM2E3My00ODI3LTlhMzktNzM5OTBjNDNmNGU1IiwiZXZlbnRfaWQiOiI2MmIxYWJhMi03OWZjLTQ4ZjItYjkwNi01M2M4NmY2NDk1MWIiLCJ0b2tlbl91c2UiOiJhY2Nlc3MiLCJzY29wZSI6ImF3cy5jb2duaXRvLnNpZ25pbi51c2VyLmFkbWluIiwiYXV0aF90aW1lIjoxNjk4MTkzNTg2LCJleHAiOjE2OTgxOTcxODYsImlhdCI6MTY5ODE5MzU4NiwianRpIjoiOGZjYzYyZjYtYzRhNy00OTAwLTkyOTQtYTBiNjg3ZDVlMjVkIiwidXNlcm5hbWUiOiIwMDAxMTEyMjIzMyJ9.U93rhG3aia9DtnJYMFjrQ-oNg3oJrq7vmhLErvBgjUuOocouZxU26rh-xJdgnPalUfNZjwOrwy0NH67sjy9sBos2-FMWFXhfWcQfLxVJBU75fDlo1C-rUNhbHQxjo-rzlkd1hDxx7oCEjXI_cpuasqdfXQeztMSO7Bdjl0ehvGGWrSE9XXpCtCI72eCQ7Dlkd6xa7pD0GH0JdrGg3WUOAkKLoMC15UZ0Ux41uAGvRK_weY2f1hscDb7saXHwOW0qtgJAT3uKUOc5WWf4rR97wZ-E2i-4nY9u1D3dW-24eIbVtr4rPN7qKqwpNk_bEpoZUw5lT-dNCLSe4hnZlbtBAw'
 // executeAuthorize(accessToken)
