@@ -1,7 +1,7 @@
 name: FIAP Tech Challenge Auth Deployment
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
