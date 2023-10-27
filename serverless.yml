@@ -9,7 +9,7 @@ provider:
     AWS_COGNITO_CLIENT_ID: ${env:AWS_COGNITO_CLIENT_ID}
     AWS_COGNITO_CLIENT_SECRET: ${env:AWS_COGNITO_CLIENT_SECRET}
   tags:
-    project: fiap
+    PROJECT: fiap-tech-challenge
 
 functions:
   authorize:
