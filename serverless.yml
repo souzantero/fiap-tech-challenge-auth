@@ -18,12 +18,6 @@ functions:
       - httpApi:
           path: /authorize
           method: post
-  authorize2:
-    handler: dist/index.authorize
-    events:
-      - httpApi:
-          path: /v2/authorize
-          method: post
   authenticate:
     handler: dist/index.authenticate
     events:
